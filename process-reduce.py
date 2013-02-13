@@ -123,16 +123,34 @@ def findTenBiggest(list_of_structs):
 	return found_indices
 
 
+def fancystring(message):
+	"""@todo: Docstring for fancystring
+
+	:message: @todo
+	:returns: @todo
+
+	"""
+	msg_type = message.get_type()
+	if (msg_type == -1):
+		return 'ITER' + '\t' + str(1+ message.data) + '\n'
+	if (msg_type == -2):
+		return 'IGNORE' + '\t' + str(message.data) + '\n'
+
+
 
 def main():
 	my_lib = __import__("pagerank-map")
 	message_queue = []
 	node_dict = {}
+	hasIter = False
 
 	for line in sys.stdin:
 		tokens = my_lib.tok(line)
 
 		if int(tokens[0]) < 0:
+			if int(tokens[0]) == -1:
+				hasIter = True
+
 			message_queue.append(my_lib.MakeMessage(tokens))
 		else:
 			target_node = int(tokens[0])
@@ -168,7 +186,14 @@ def main():
 	
 
 	for msg in message_queue:
-		sys.stdout.write(str(msg))
+		string = fancystring(msg)
+		sys.stdout.write(string)
+
+	if hasIter == False:
+		m = my_lib.MESSAGE(-1)
+		m.set_iter(0)
+		string = fancystring(m)
+		sys.stdout.write(string)
 	
 if __name__ == '__main__':
 	main()
