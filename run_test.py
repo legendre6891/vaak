@@ -11,6 +11,7 @@ def main():
 	"""
 
 	stat = call('./pagerank-map.py < 0 | sort -k 1,1 | ./pagerank-reduce.py | ./process-map.py | sort -k 1,1 | ./process-reduce.py > output', shell=True)
+	stat = call('rm log.txt', shell=True)
 
 	count = 1
 

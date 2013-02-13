@@ -8,9 +8,17 @@ import re
 Currently, messages come in these types:
 	CONTRIB;	key = natural number, value = float;
 	ITER; 		key = -1; value = int;
-	KEEP; 	key = -2; value = int
+	KEEP; 		key = -2; value = int
+	IGNORE; 	key = -3; value = int
 	CHAIN; 		key = -100; value = [int] [int .... int]
 	PREV; 		key = -101; value = [int] float
+
+Furthermore, all messages end in a
+	tag
+and
+	tag_list
+
+These two values can be *ANY STRING*. Use them for your convenience.
 """
 
 
@@ -291,7 +299,7 @@ def main():
 						m.set_contrib(fraction * alpha * current_rank)
 						message_queue.append(m)
 			else:
-				if outnode not in keep_set:
+				if msg_type not in keep_set:
 					m = MESSAGE(msg_type)
 					m.set_contrib(alpha * current_rank)
 					message_queue.append(m)

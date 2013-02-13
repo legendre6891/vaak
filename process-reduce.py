@@ -36,11 +36,12 @@ def getMaxDelta(node_dict):
 	"""
 	m = 0.0
 	for node,data in node_dict.iteritems():
-		if fabs(data[0] - data[1])/data[1] > m: m = fabs(data[0] - data[1])/data[1]
+		if fabs(data[0] - data[1])/data[1] > m: 
+			m = fabs(data[0] - data[1])/data[1]
 	
 	return m
 
-def stoppingCriterion(node_dict, count_iteration):
+def stoppingCriterion(node_dict, message_dict):
 	"""@todo: Docstring for stoppingCriterion
 
 	:node_dict: @todo
@@ -48,6 +49,8 @@ def stoppingCriterion(node_dict, count_iteration):
 	:returns: @todo
 
 	"""
+	count_iteration = message_dict['ITER']
+
 	if (count_iteration > 200):
 		return True
 	dig = getMaxDigression(node_dict)
@@ -162,12 +165,59 @@ def fancystring(message):
 
 
 
+def message_entry_to_string(msg_type, data):
+	"""@todo: Docstring for message_entry_to_string
+
+	:msg_type: @todo
+	:data: @todo
+	:returns: @todo
+
+	"""
+	if msg_type == 'ITER':
+		return msg_type + '\t' + str(data) + '\n'
+	
+	if msg_type == 'KEEP':
+		string = ''
+		for ignored_node in data:
+			string += msg_type + '\t' + str(ignored_node) + '\n'
+		return string
+
+
+
+
+def PERFORM_OPTIMIZATIONS(node_dict, message_dict):
+	"""@todo: Docstring for PERFORM_OPTIMIZATIONS
+
+	:node_dict: @todo
+	:message_dict: @todo
+	:returns: @todo
+
+	"""
+	count_iteration = message_dict['ITER']
+	change_threshold= 10**(-float(count_iteration)/5.00 - 1)
+
+
+	for node, data in node_dict.iteritems():
+		if (node not in message_dict['KEEP']) and fabs(data[1] -\
+				data[0])/data[1] < change_threshold:
+			f_file = open('log.txt', 'a')
+			print >> f_file, 'keeping', node, '(curr, prev) =', data[1], \
+			data[0], "at iteration", count_iteration
+			message_dict['KEEP'].add(node)
+			pass
+
 def main():
 	my_lib = __import__("pagerank-map")
 	message_queue = []
+
 	node_dict = {}
+
+
+	message_dict = {}
+	message_dict['ITER'] = 0
+	message_dict['KEEP'] = set([])
+
 	hasIter = False
-	count_iteration = -1
 
 	for line in sys.stdin:
 		tokens = my_lib.tok(line)
@@ -177,18 +227,25 @@ def main():
 				hasIter = True
 				count_iteration = int(tokens[1])
 
+			m = my_lib.MakeMessage(tokens)
+			
+			if m.form == -1:
+				message_dict['ITER'] = m.data + 1
+			else:
+				if m.form == -2:
+					message_dict['KEEP'].add(m.data)
 
-			message_queue.append(my_lib.MakeMessage(tokens))
+			message_queue.append(m)
 		else:
 			target_node = int(tokens[0])
 			if target_node in node_dict:
 				if tokens[2] == '{':
 					for u in range(3, len(tokens)):
 						node_dict[target_node][2].append(int(tokens[u]))
-				if tokens[2] == '$':
+				elif tokens[2] == '$':
 					next_rank = float(tokens[1])
 					node_dict[target_node][0] = next_rank
-				if tokens[2] == '*':
+				elif tokens[2] == '*':
 					prev_rank = float(tokens[1])
 					node_dict[target_node][1] = prev_rank
 			else:
@@ -196,30 +253,36 @@ def main():
 				if tokens[2] == '{':
 					for u in range(3, len(tokens)):
 						node_dict[target_node][2].append(int(tokens[u]))
-				if tokens[2] == '$':
+				elif tokens[2] == '$':
 					next_rank = float(tokens[1])
 					node_dict[target_node][0] = next_rank
-				if tokens[2] == '*':
+				elif tokens[2] == '*':
 					prev_rank = float(tokens[1])
 					node_dict[target_node][1] = prev_rank
 
 
-	if stoppingCriterion(node_dict, count_iteration):
+	PERFORM_OPTIMIZATIONS(node_dict, message_dict)
+
+
+	if stoppingCriterion(node_dict, message_dict):
 		top_ten = findTenBiggest(node_dict)
 		for i in range(10):
 			sys.stdout.write("FinalRank:" + str(top_ten[i][1]) + '\t' +
 					str(top_ten[i][0]) + '\n')
 		sys.exit(33)
 	else:
-		for msg in message_queue:
-			string = fancystring(msg)
+		for msg_type, data in message_dict.iteritems():
+			string = message_entry_to_string(msg_type, data)
 			sys.stdout.write(string)
+		#for msg in message_queue:
+			#string = fancystring(msg)
+			#sys.stdout.write(string)
 
-		if hasIter == False:
-			m = my_lib.MESSAGE(-1)
-			m.set_iter(0)
-			string = fancystring(m)
-			sys.stdout.write(string)
+		#if hasIter == False:
+			#m = my_lib.MESSAGE(-1)
+			#m.set_iter(0)
+			#string = fancystring(m)
+			#sys.stdout.write(string)
 
 		for node, data in node_dict.iteritems():
 			sys.stdout.write("NodeId:" + str(node) + '\t' + str(data[0]) + ',' \
