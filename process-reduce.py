@@ -250,11 +250,11 @@ if stoppingCriterion(minimum_digress, maximum, count_iteration):
 	top_ten = findTenBiggest(list_of_structs)
 	for i in range(10):
 		sys.stdout.write("FinalRank:" + str(top_ten[i][1]) + '\t' + str(top_ten[i][0]) + '\n')
-	sys.stdout.write("minimum_digress = " + str(minimum_digress) + '\n')
-	sys.stdout.write("iteration = " + str(count_iteration) + '\n')
-	sys.exit(33)
+	#sys.stdout.write("minimum_digress = " + str(minimum_digress) + '\n')
+	#sys.stdout.write("iteration = " + str(count_iteration) + '\n')
+	#sys.exit(33)
 else:
 	for u in list_to_write:
 		sys.stdout.write(u)
-	sys.exit(0)
+	#sys.exit(0)
 
