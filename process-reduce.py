@@ -1,6 +1,46 @@
 #!/usr/bin/env python
 import sys
 
+
+def fabs(f):
+	if f < 0:
+		return -f
+	else:
+		return f
+
+def getMaxDigression(node_dict):
+
+	m = 0.0
+	for node,data in node_dict.iteritems():
+		if fabs(data[0] - data[1]) > m:
+			m = fabs(data[0] - data[1])
+	
+	return m
+
+
+def getMaxRank(node_dict):
+
+	m = 0.0
+	for node,data in node_dict.iteritems():
+		if data[0] > m:
+			m = data[0]
+	
+	return m
+
+def getMaxDelta(node_dict):
+	"""@todo: Docstring for getMaxDelta
+
+	:node_dict: @todo
+	:returns: @todo
+
+	"""
+	m = 0.0
+	for node,data in node_dict.iteritems():
+		if fabs(data[0] - data[1])/data[1] > m:
+			m = fabs(data[0] - data[1])/data[1]
+	
+	return m
+
 def stoppingCriterion(node_dict, count_iteration):
 	"""@todo: Docstring for stoppingCriterion
 
@@ -9,8 +49,14 @@ def stoppingCriterion(node_dict, count_iteration):
 	:returns: @todo
 
 	"""
-	if (count_iteration > 50):
+	#if (count_iteration > 200):
+		#return True
+	dig = getMaxDigression(node_dict)
+	ma = getMaxRank(node_dict)
+	
+	if (dig/ma < .01):
 		return True
+
 	else:
 		return False
 

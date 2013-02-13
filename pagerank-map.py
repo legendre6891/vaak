@@ -247,7 +247,6 @@ def MakeMessage(tokens, hasTag = False):
 def main():
 	message_queue = []
 	alpha = 0.85
-	alpha_bar = 1-alpha
 	ignore_set = set([])
 	regex = re.compile(".*:([0-9]+).*")
 	
@@ -273,7 +272,7 @@ def main():
 			message_queue.append(m)
 
 			m = MESSAGE(-101)
-			m.set_prev(previous_rank)
+			m.set_prev(current_rank)
 			m.set_prev_parent(msg_type)
 			message_queue.append(m)
 

@@ -15,10 +15,10 @@ def main():
 		else:
 			target_node = int(tokens[0])
 			if target_node in pagerank_dict:
-				# add the contributions
 				pagerank_dict[target_node] += float(tokens[1]) 
 			else:
 				pagerank_dict[target_node] = 0.0
+				pagerank_dict[target_node] += float(tokens[1]) 
 
 	for node, rank in pagerank_dict.iteritems():
 		m = my_lib.CreatePageRankMessage(node, rank)
