@@ -1,7 +1,20 @@
 #!/usr/bin/env python
 import sys
 
-def findTenBiggest(list_of_structs):
+def stoppingCriterion(node_dict, count_iteration):
+	"""@todo: Docstring for stoppingCriterion
+
+	:node_dict: @todo
+	:count_iteration: @todo
+	:returns: @todo
+
+	"""
+	if (count_iteration > 50):
+		return True
+	else:
+		return False
+
+def findTenBiggest(node_dict):
 	"""@todo: Docstring for findTenBiggest
 
 	:list_of_structs: @todo
@@ -9,8 +22,8 @@ def findTenBiggest(list_of_structs):
 
 	"""
 	found_indices = [[0,0] for i in range(10)]
-	for st in list_of_structs:
-		if (st.current_rank > found_indices[0][1]):
+	for node,data in node_dict.iteritems():
+		if (data[0] > found_indices[0][1]):
 			found_indices[9] = found_indices[8]
 			found_indices[8] = found_indices[7]
 			found_indices[7] = found_indices[6]
@@ -20,9 +33,9 @@ def findTenBiggest(list_of_structs):
 			found_indices[3] = found_indices[2]
 			found_indices[2] = found_indices[1]
 			found_indices[1] = found_indices[0]
-			found_indices[0] = [st.id, st.current_rank]
+			found_indices[0] = [node, data[0]]
 			continue
-		if (st.current_rank > found_indices[1][1]):
+		if (data[0] > found_indices[1][1]):
 			found_indices[9] = found_indices[8]
 			found_indices[8] = found_indices[7]
 			found_indices[7] = found_indices[6]
@@ -31,9 +44,9 @@ def findTenBiggest(list_of_structs):
 			found_indices[4] = found_indices[3]
 			found_indices[3] = found_indices[2]
 			found_indices[2] = found_indices[1]
-			found_indices[1] = [st.id, st.current_rank]
+			found_indices[1] = [node, data[0]]
 			continue
-		if (st.current_rank > found_indices[2][1]):
+		if (data[0] > found_indices[2][1]):
 			found_indices[9] = found_indices[8]
 			found_indices[8] = found_indices[7]
 			found_indices[7] = found_indices[6]
@@ -41,49 +54,49 @@ def findTenBiggest(list_of_structs):
 			found_indices[5] = found_indices[4]
 			found_indices[4] = found_indices[3]
 			found_indices[3] = found_indices[2]
-			found_indices[2] = [st.id, st.current_rank]
+			found_indices[2] = [node, data[0]]
 			continue
-		if (st.current_rank > found_indices[3][1]):
+		if (data[0] > found_indices[3][1]):
 			found_indices[9] = found_indices[8]
 			found_indices[8] = found_indices[7]
 			found_indices[7] = found_indices[6]
 			found_indices[6] = found_indices[5]
 			found_indices[5] = found_indices[4]
 			found_indices[4] = found_indices[3]
-			found_indices[3] = [st.id, st.current_rank]
+			found_indices[3] = [node, data[0]]
 			continue
-		if (st.current_rank > found_indices[4][1]):
+		if (data[0] > found_indices[4][1]):
 			found_indices[9] = found_indices[8]
 			found_indices[8] = found_indices[7]
 			found_indices[7] = found_indices[6]
 			found_indices[6] = found_indices[5]
 			found_indices[5] = found_indices[4]
-			found_indices[4] = [st.id, st.current_rank]
+			found_indices[4] = [node, data[0]]
 			continue
-		if (st.current_rank > found_indices[5][1]):
+		if (data[0] > found_indices[5][1]):
 			found_indices[9] = found_indices[8]
 			found_indices[8] = found_indices[7]
 			found_indices[7] = found_indices[6]
 			found_indices[6] = found_indices[5]
-			found_indices[5] = [st.id, st.current_rank]
+			found_indices[5] = [node, data[0]]
 			continue
-		if (st.current_rank > found_indices[6][1]):
+		if (data[0] > found_indices[6][1]):
 			found_indices[9] = found_indices[8]
 			found_indices[8] = found_indices[7]
 			found_indices[7] = found_indices[6]
-			found_indices[6] = [st.id, st.current_rank]
+			found_indices[6] = [node, data[0]]
 			continue
-		if (st.current_rank > found_indices[7][1]):
+		if (data[0] > found_indices[7][1]):
 			found_indices[9] = found_indices[8]
 			found_indices[8] = found_indices[7]
-			found_indices[7] = [st.id, st.current_rank]
+			found_indices[7] = [node, data[0]]
 			continue
-		if (st.current_rank > found_indices[8][1]):
+		if (data[0] > found_indices[8][1]):
 			found_indices[9] = found_indices[8]
-			found_indices[8] = [st.id, st.current_rank]
+			found_indices[8] = [node, data[0]]
 			continue
-		if (st.current_rank > found_indices[9][1]):
-			found_indices[9] = [st.id, st.current_rank]
+		if (data[0] > found_indices[9][1]):
+			found_indices[9] = [node, data[0]]
 			continue
 	
 	return found_indices
@@ -109,7 +122,7 @@ def main():
 	message_queue = []
 	node_dict = {}
 	hasIter = False
-	count_interation = -1
+	count_iteration = -1
 
 	for line in sys.stdin:
 		tokens = my_lib.tok(line)
@@ -117,7 +130,7 @@ def main():
 		if int(tokens[0]) < 0:
 			if int(tokens[0]) == -1:
 				hasIter = True
-				interation = int(tokens[1])
+				count_iteration = int(tokens[1])
 
 
 			message_queue.append(my_lib.MakeMessage(tokens))
@@ -146,23 +159,33 @@ def main():
 					node_dict[target_node][1] = prev_rank
 
 
-	for node, data in node_dict.iteritems():
-		sys.stdout.write("NodeId:" + str(node) + '\t' + str(data[0]) + ',' \
-				+ str(data[1]))
-		for outnode in data[2]:
-			sys.stdout.write(',' + str(outnode))
-		sys.stdout.write('\n')
+	if stoppingCriterion(node_dict, count_iteration):
+		top_ten = findTenBiggest(node_dict)
+		for i in range(10):
+			sys.stdout.write("FinalRank:" + str(top_ten[i][1]) + '\t' +
+					str(top_ten[i][0]) + '\n')
+		sys.exit(33)
+	else:
+		for node, data in node_dict.iteritems():
+			sys.stdout.write("NodeId:" + str(node) + '\t' + str(data[0]) + ',' \
+					+ str(data[1]))
+			for outnode in data[2]:
+				sys.stdout.write(',' + str(outnode))
+			sys.stdout.write('\n')
+		
+
+		for msg in message_queue:
+			string = fancystring(msg)
+			sys.stdout.write(string)
+
+		if hasIter == False:
+			m = my_lib.MESSAGE(-1)
+			m.set_iter(0)
+			string = fancystring(m)
+			sys.stdout.write(string)
+
+		sys.exit(0)
 	
-
-	for msg in message_queue:
-		string = fancystring(msg)
-		sys.stdout.write(string)
-
-	if hasIter == False:
-		m = my_lib.MESSAGE(-1)
-		m.set_iter(0)
-		string = fancystring(m)
-		sys.stdout.write(string)
 	
 if __name__ == '__main__':
 	main()
