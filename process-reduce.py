@@ -49,12 +49,12 @@ def stoppingCriterion(node_dict, count_iteration):
 	:returns: @todo
 
 	"""
-	#if (count_iteration > 200):
-		#return True
+	if (count_iteration > 200):
+		return True
 	dig = getMaxDigression(node_dict)
 	ma = getMaxRank(node_dict)
 	
-	if (dig/ma < .01):
+	if (dig/ma < .001):
 		return True
 
 	else:
