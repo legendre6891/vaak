@@ -33,6 +33,7 @@ class MESSAGE:
 		self.data = None
 		self.data2 = []
 		self.tag = None
+		self.taglist = []
 		
 
 	def set_tag(self, t):
@@ -43,6 +44,15 @@ class MESSAGE:
 
 		"""
 		self.tag = t
+	
+	def add_tag_list(self, thing):
+		"""@todo: Docstring for add_tag_list
+
+		:thing: @todo
+		:returns: @todo
+
+		"""
+		self.taglist.append(thing)
 
 	def get_type(self):
 		"""@todo: Docstring for get_type
@@ -153,6 +163,10 @@ class MESSAGE:
 			result += '\t'
 			result += str(self.tag)
 
+			for thing in self.taglist:
+				result += '\t'
+				result += str(thing)
+
 		result += '\n'
 
 		return result
@@ -169,20 +183,19 @@ def tok(string):
 	res = string.strip()
 	return res.split('\t')
 
-def getNumber(string):
+def getNumber(string, regex):
 	"""@todo: Docstring for getNumber
 
 	:string: @todo
 	:returns: @todo
 
 	"""
-	global regex
 	r = regex.search(string)
 	regex.match(string)
 
 	return int(r.groups()[0])
 
-def getType(string):
+def getType(string, regex):
 	"""@todo: Docstring for getType
 
 	:string: @todo
@@ -194,8 +207,42 @@ def getType(string):
 	if string == 'IGNORE':
 		return -2
 	else:
-		return getNumber(string)
+		return getNumber(string, regex)
 
+def CreatePageRankMessage(node, rank):
+	m = MESSAGE(node)
+	m.set_contrib(rank)
+	return m
+
+def MakeMessage(tokens, hasTag = False):
+	"""@todo: Docstring for MakeMessage
+
+	:tokens: @todo
+	:returns: @todo
+
+	"""
+	msg_type = int(tokens[0])
+	m = MESSAGE(msg_type)
+
+	if msg_type >= 0:
+		m.set_contrib(float(tokens[1]))
+		return m
+	if msg_type == -1:
+		m.set_iter(int(tokens[1]))
+		return m
+	if msg_type == -2:
+		m.set_ignore(int(tokens[1]))
+		return m
+	if msg_type == -100:
+		m.set_chain_parent(int(tokens[1]))
+		for u in range(2, len(tokens)):
+			m.add_to_chain(int(tokens[u]))
+		return m
+
+	if msg_type == -101:
+		m.set_prev_parent(int(tokens[1]))
+		m.set_prev(float(tokens[2]))
+		return m
 
 def main():
 	message_queue = []
@@ -203,9 +250,10 @@ def main():
 	alpha_bar = 1-alpha
 	ignore_set = set([])
 	regex = re.compile(".*:([0-9]+).*")
+	
 	for line in sys.stdin:
 		tokens = tok(line)
-		msg_type = getType(tokens[0])
+		msg_type = getType(tokens[0], regex)
 		if msg_type >= 0:
 			numberlist = tokens[1].split(',')
 			current_rank = float(numberlist[0])
@@ -225,6 +273,7 @@ def main():
 
 			m = MESSAGE(-101)
 			m.set_prev(previous_rank)
+			m.set_prev_parent(msg_type)
 			message_queue.append(m)
 
 
