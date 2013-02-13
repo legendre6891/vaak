@@ -36,8 +36,7 @@ def getMaxDelta(node_dict):
 	"""
 	m = 0.0
 	for node,data in node_dict.iteritems():
-		if fabs(data[0] - data[1])/data[1] > m:
-			m = fabs(data[0] - data[1])/data[1]
+		if fabs(data[0] - data[1])/data[1] > m: m = fabs(data[0] - data[1])/data[1]
 	
 	return m
 
@@ -159,7 +158,7 @@ def fancystring(message):
 	if (msg_type == -1):
 		return 'ITER' + '\t' + str(1+ message.data) + '\n'
 	if (msg_type == -2):
-		return 'IGNORE' + '\t' + str(message.data) + '\n'
+		return 'KEEP' + '\t' + str(message.data) + '\n'
 
 
 
@@ -212,14 +211,6 @@ def main():
 					str(top_ten[i][0]) + '\n')
 		sys.exit(33)
 	else:
-		for node, data in node_dict.iteritems():
-			sys.stdout.write("NodeId:" + str(node) + '\t' + str(data[0]) + ',' \
-					+ str(data[1]))
-			for outnode in data[2]:
-				sys.stdout.write(',' + str(outnode))
-			sys.stdout.write('\n')
-		
-
 		for msg in message_queue:
 			string = fancystring(msg)
 			sys.stdout.write(string)
@@ -229,6 +220,15 @@ def main():
 			m.set_iter(0)
 			string = fancystring(m)
 			sys.stdout.write(string)
+
+		for node, data in node_dict.iteritems():
+			sys.stdout.write("NodeId:" + str(node) + '\t' + str(data[0]) + ',' \
+					+ str(data[1]))
+			for outnode in data[2]:
+				sys.stdout.write(',' + str(outnode))
+			sys.stdout.write('\n')
+		
+
 
 		sys.exit(0)
 	

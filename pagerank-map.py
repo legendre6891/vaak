@@ -8,7 +8,7 @@ import re
 Currently, messages come in these types:
 	CONTRIB;	key = natural number, value = float;
 	ITER; 		key = -1; value = int;
-	IGNORE; 	key = -2; value = int
+	KEEP; 	key = -2; value = int
 	CHAIN; 		key = -100; value = [int] [int .... int]
 	PREV; 		key = -101; value = [int] float
 """
@@ -84,8 +84,8 @@ class MESSAGE:
 		else:
 			print "NOT ITER"
 	
-	def set_ignore(self, ig):
-		"""@todo: Docstring for set_ignore
+	def set_keep(self, ig):
+		"""@todo: Docstring for set_keep
 
 		:ig: @todo
 		:returns: @todo
@@ -94,7 +94,7 @@ class MESSAGE:
 		if self.form == -2:
 			self.data = ig
 		else:
-			print "NOT IGNORE"
+			print "NOT KEEP"
 	
 	def set_chain_parent(self, chain_pt):
 		"""@todo: Docstring for set_chain_parent
@@ -204,7 +204,7 @@ def getType(string, regex):
 	"""
 	if string == "ITER":
 		return -1
-	if string == 'IGNORE':
+	if string == 'KEEP':
 		return -2
 	else:
 		return getNumber(string, regex)
@@ -231,7 +231,7 @@ def MakeMessage(tokens, hasTag = False):
 		m.set_iter(int(tokens[1]))
 		return m
 	if msg_type == -2:
-		m.set_ignore(int(tokens[1]))
+		m.set_keep(int(tokens[1]))
 		return m
 	if msg_type == -100:
 		m.set_chain_parent(int(tokens[1]))
@@ -247,7 +247,7 @@ def MakeMessage(tokens, hasTag = False):
 def main():
 	message_queue = []
 	alpha = 0.85
-	ignore_set = set([])
+	keep_set = set([])
 	regex = re.compile(".*:([0-9]+).*")
 	
 	for line in sys.stdin:
@@ -276,24 +276,31 @@ def main():
 			m.set_prev_parent(msg_type)
 			message_queue.append(m)
 
+			if msg_type in keep_set:
+				m = MESSAGE(msg_type)
+				m.set_contrib(current_rank)
+				message_queue.append(m)
 
 
 			d = len(outnode_list)
 			if d > 0:
 				fraction = 1.0/float(d)
 				for outnode in outnode_list:
-					m = MESSAGE(outnode) # a contribution for outnode
-					m.set_contrib(fraction * alpha * current_rank)
-					message_queue.append(m)
+					if outnode not in keep_set:
+						m = MESSAGE(outnode) # a contribution for outnode
+						m.set_contrib(fraction * alpha * current_rank)
+						message_queue.append(m)
 			else:
-				m = MESSAGE(msg_type)
-				m.set_contrib(alpha * current_rank)
-				message_queue.append(m)
+				if outnode not in keep_set:
+					m = MESSAGE(msg_type)
+					m.set_contrib(alpha * current_rank)
+					message_queue.append(m)
 
 			## add the contribution of G
-			m = MESSAGE(msg_type)
-			m.set_contrib(1-alpha)
-			message_queue.append(m)
+			if msg_type not in keep_set:
+				m = MESSAGE(msg_type)
+				m.set_contrib(1-alpha)
+				message_queue.append(m)
 
 			continue ## continue to the next line
 
@@ -306,10 +313,10 @@ def main():
 
 		if msg_type == -2:
 			m = MESSAGE(msg_type)
-			m.set_ignore(int(tokens[1]))
+			m.set_keep(int(tokens[1]))
 			message_queue.append(m)
 
-			ignore_set.add(int(tokens[1]))
+			keep_set.add(int(tokens[1]))
 			continue
 
 	for msg in message_queue:
