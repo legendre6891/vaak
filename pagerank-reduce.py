@@ -1,57 +1,112 @@
 #!/usr/bin/env python
 
 import sys
-keyword_list = ["IGNORE", "ITERATION"]
-
-#
-# This program simply represents the identity function.
-#
-
-class PR_Reduce_Struct:
-	def __init__(self, node):
+class MESSAGE:
+	def __init__(self, msg_type):
 		"""@todo: Docstring for __init__
+
+		:type: @todo
 		:returns: @todo
 
 		"""
-		self.sum = 0.0
-		self.id = node
-		self.innodes = []	
-		self.previous_rank = 0.0
-
-	def set_prev_rank(self, pr):
-		"""@todo: Docstring for set_prev_rank
-
-		:pr: @todo
+		self.form = msg_type 
+		self.data = None
+		self.data2 = []
+	def get_type(self):
+		"""@todo: Docstring for get_type
 		:returns: @todo
 
 		"""
-		self.previous_rank = pr
+		return self.form
+	def set_contrib(self, ctr):
+		"""@todo: Docstring for set_contrib
 
-	def contribute(self, ct):
-		"""@todo: Docstring for contribute
-
-		:ct: @todo
+		:ctr: @todo
 		:returns: @todo
 
 		"""
-		self.sum += ct
+		if self.form >= 0:
+			self.data = ctr
+		else:
+			print "NOT CONTRIB"
+	def set_iter(self, it):
+		"""@todo: Docstring for set_iter
+
+		:it: @todo
+		:returns: @todo
+
+		"""
+		if self.form == -1:
+			self.data = it
+		else:
+			print "NOT ITER"
 	
-	def add_in(self, node_id):
-		"""@todo: Docstring for add_in
+	def set_ignore(self, ig):
+		"""@todo: Docstring for set_ignore
+
+		:ig: @todo
+		:returns: @todo
+
+		"""
+		if self.form == -2:
+			self.data = ig
+		else:
+			print "NOT IGNORE"
+	
+	def set_chain_parent(self, chain_pt):
+		"""@todo: Docstring for set_chain_parent
+
+		:chain_pt: @todo
+		:returns: @todo
+
+		"""
+		if self.form == -100:
+			self.data = chain_pt
+		else:
+			print "NOT CHAIN"
+	
+	def add_to_chain(self, node_id):
+		"""@todo: Docstring for add_to_chain
 
 		:node_id: @todo
 		:returns: @todo
 
 		"""
-		self.innodes.append(node_id)
+		if self.form == -100:
+			self.data2.append(node_id)
+		else:
+			print "NOT CHAIN"
+	
+	def set_prev(self, pr):
+		"""@todo: Docstring for set_prev
+
+		:pr: @todo
+		:returns: @todo
+
+		"""
+		if self.form == -101:
+			self.data = pr
+		else:
+			print "NOT PREV"
 	
 	def __str__(self):
 		"""@todo: Docstring for __str__
 		:returns: @todo
 
 		"""
-		return str(self.id) + '\t' + str(self.sum) + '\t' + \
-	str(self.innodes) + '\t' + str(self.previous_rank) + '\n'
+		result = ''
+		result += str(self.form)
+		result += '\t'
+
+		result += str(self.data)
+
+		for thing in self.data2:
+			result += '\t'
+			result += str(thing)
+
+		result += '\n'
+
+		return result
 
 def processMap(line):
 	"""
@@ -74,33 +129,68 @@ def processMap(line):
 
 
 
-last_node = -1
-list_of_structs = []
-counter = -1
+def tok(string):
+	"""@todo: Docstring for tok
+
+	:string: @todo
+	:returns: @todo
+
+	"""
+	res = string.strip()
+	return res.split('\t')
+
+def CreatePageRankMessage(node, rank):
+	m = MESSAGE(node)
+	m.set_contrib(rank)
+	return m
+
+def MakeMessage(tokens):
+	"""@todo: Docstring for MakeMessage
+
+	:tokens: @todo
+	:returns: @todo
+
+	"""
+	msg_type = int(tokens[0])
+	m = MESSAGE(msg_type)
+
+	if msg_type >= 0:
+		m.set_contrib(float(tokens[1]))
+		return m
+	if msg_type == -1:
+		m.set_iter(int(tokens[1]))
+		return m
+	if msg_type == -2:
+		m.set_ignore(int(tokens[1]))
+		return m
+	if msg_type == -100:
+		m.set_chain_parent(int(tokens[1]))
+		for u in range(2, len(tokens)):
+			m.add_to_chain(int(tokens[u]))
+		return m
+	if msg_type == -101:
+		m.set_prev(float(tokens[1]))
+		return m
+
+
+message_queue = []
+pagerank_dict = {}
 
 for line in sys.stdin:
-	old_line = line
-	line = processMap(line)
+	tokens = tok(line)
+	if int(tokens[0]) < 0:
+		message_queue.append(MakeMessage(tokens))
+	else:
+		target_node = int(tokens[0])
+		if target_node in pagerank_dict:
+			# add the contributions
+			pagerank_dict[target_node] += float(tokens[1]) 
+		else:
+			pagerank_dict[target_node] = 0.0
 
-	if (line[0] == -10):
-		sys.stdout.write(old_line)
-		continue
+for node, rank in pagerank_dict.iteritems():
+	m = CreatePageRankMessage(node, rank)
+	message_queue.append(m)
 
-	if line[0] != last_node:
-		if last_node != -1:
-			 sys.stdout.write(str(list_of_structs[counter]))
-		list_of_structs.append(PR_Reduce_Struct(line[0]))
-
-		counter += 1
-		last_node = line[0]
-
-	
-	list_of_structs[counter].contribute(line[1])
-
-	if line[2] != -11 and line[2] != -1:
-		list_of_structs[counter].add_in(line[2])
-
-	if line[2] == -1:
-		list_of_structs[counter].set_prev_rank(line[3])
-
-sys.stdout.write(str(list_of_structs[counter]))
+for msg in message_queue:
+	sys.stdout.write(str(msg))

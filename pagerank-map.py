@@ -2,132 +2,235 @@
 
 import sys
 import re
-from subprocess import *
 
-keyword_list = ["IGNORE", "ITERATION"]
+
 """
-IGNORE will output a -99 as the node receiving the input 
-ITERATION ########## -10 ##########
-#################### -1 #### comes from G
-#################### -11 ### comes from self, when no outnodes
+Currently, messages come in these types:
+	CONTRIB;	key = natural number, value = float;
+	ITER; 		key = -1; value = int;
+	IGNORE; 	key = -2; value = int
+	CHAIN; 		key = -100; value = [int] [int .... int]
+	PREV; 		key = -101; value = [int] float
 """
 
-logfile_name = "data_log.txt"
-watch_nodes = [89,793]
 
-def processLine(line):
-	"""This processes a input line of the form 
-	NodeId:k 	rank, rank',a,b,c,d,e, ....
+"""
+To add a new kind, the following must be done:
+	* Add something in the MESSAGE class to set elements.
+	* Add support into getType
+	* Add a handler after getType
+"""
 
-	:line: a string of the format above.
-	:returns: returns a list
-	[node id, current rank, previous rank, \
-			[list of outnodes]]
+class MESSAGE:
+	def __init__(self, msg_type):
+		"""@todo: Docstring for __init__
 
-	"""
+		:type: @todo
+		:returns: @todo
+
+		"""
+		self.form = msg_type 
+		self.data = None
+		self.data2 = []
+	def get_type(self):
+		"""@todo: Docstring for get_type
+		:returns: @todo
+
+		"""
+		return self.form
+	def set_contrib(self, ctr):
+		"""@todo: Docstring for set_contrib
+
+		:ctr: @todo
+		:returns: @todo
+
+		"""
+		if self.form >= 0:
+			self.data = ctr
+		else:
+			print "NOT CONTRIB"
+	def set_iter(self, it):
+		"""@todo: Docstring for set_iter
+
+		:it: @todo
+		:returns: @todo
+
+		"""
+		if self.form == -1:
+			self.data = it
+		else:
+			print "NOT ITER"
 	
-	line = line.strip()
-	line = line.split('\t')
-	if line[0] in keyword_list:
-		return [line[0], int(line[1])]
+	def set_ignore(self, ig):
+		"""@todo: Docstring for set_ignore
 
+		:ig: @todo
+		:returns: @todo
 
-	regex = re.compile(".*:([0-9]+).*")
-	r = regex.search(line[0])
-	regex.match(line[0])
+		"""
+		if self.form == -2:
+			self.data = ig
+		else:
+			print "NOT IGNORE"
+	
+	def set_chain_parent(self, chain_pt):
+		"""@todo: Docstring for set_chain_parent
 
-	node_id = int(r.groups()[0])
+		:chain_pt: @todo
+		:returns: @todo
 
-	numberlist = line[1].split(',')
-	current_rank = float(numberlist[0])
-	previous_rank = float(numberlist[1])
+		"""
+		if self.form == -100:
+			self.data = chain_pt
+		else:
+			print "NOT CHAIN"
+	
+	def add_to_chain(self, node_id):
+		"""@todo: Docstring for add_to_chain
 
-	outnode_list = []
-	for u in range(2, len(numberlist)):
-		outnode_list.append(int(numberlist[u]))
+		:node_id: @todo
+		:returns: @todo
 
-	return [node_id, current_rank, previous_rank, outnode_list]
+		"""
+		if self.form == -100:
+			self.data2.append(node_id)
+		else:
+			print "NOT CHAIN"
+	
+	def set_prev(self, pr):
+		"""@todo: Docstring for set_prev
 
+		:pr: @todo
+		:returns: @todo
 
-page_rank_map_output = []
+		"""
+		if self.form == -101:
+			self.data = pr
+		else:
+			print "NOT PREV"
+	
+	def __str__(self):
+		"""@todo: Docstring for __str__
+		:returns: @todo
+
+		"""
+		result = ''
+		result += str(self.form)
+		result += '\t'
+
+		result += str(self.data)
+
+		for thing in self.data2:
+			result += '\t'
+			result += str(thing)
+
+		result += '\n'
+
+		return result
+	
+
+message_queue = []
 alpha = 0.85
 alpha_bar = 1-alpha
-list_of_line_structs = []
-total_sum = 0.0
-total_nodes = 0
-
 ignore_set = set([])
+regex = re.compile(".*:([0-9]+).*")
+
+def tok(string):
+	"""@todo: Docstring for tok
+
+	:string: @todo
+	:returns: @todo
+
+	"""
+	res = string.strip()
+	return res.split('\t')
+
+def getNumber(string):
+	"""@todo: Docstring for getNumber
+
+	:string: @todo
+	:returns: @todo
+
+	"""
+	global regex
+	r = regex.search(string)
+	regex.match(string)
+
+	return int(r.groups()[0])
+
+def getType(string):
+	"""@todo: Docstring for getType
+
+	:string: @todo
+	:returns: @todo
+
+	"""
+	if string == "ITER":
+		return -1
+	if string == 'IGNORE':
+		return -2
+	else:
+		return getNumber(string)
 
 for line in sys.stdin:
-	line = processLine(line)
-	list_of_line_structs.append(line)
-n_nodes = len(list_of_line_structs)
+	tokens = tok(line)
+	msg_type = getType(tokens[0])
+	if msg_type >= 0:
+		numberlist = tokens[1].split(',')
+		current_rank = float(numberlist[0])
+		previous_rank = float(numberlist[1])
 
 
-for u in range(n_nodes):
-	r = list_of_line_structs[u]
+		## Add the CHAIN
+		m = MESSAGE(-100)
+		m.set_chain_parent(msg_type)
 
-	if (r[0] == "ITERATION"):
-		page_rank_map_output.append(str(-10) + '\t' + str(r[1]) + '\n')
+		outnode_list = []
+		for u in range(2, len(numberlist)):
+			outnode_list.append(int(numberlist[u]))
+			m.add_to_chain(int(numberlist[u]))
+
+		message_queue.append(m)
+
+		m = MESSAGE(-101)
+		m.set_prev(previous_rank)
+		message_queue.append(m)
+
+
+
+		d = len(outnode_list)
+		if d > 0:
+			fraction = 1.0/float(d)
+			for outnode in outnode_list:
+				m = MESSAGE(outnode) # a contribution for outnode
+				m.set_contrib(fraction * alpha * current_rank)
+				message_queue.append(m)
+		else:
+			m = MESSAGE(msg_type)
+			m.set_contrib(alpha * current_rank)
+			message_queue.append(m)
+
+		## add the contribution of G
+		m = MESSAGE(msg_type)
+		m.set_contrib(1-alpha)
+		message_queue.append(m)
+
+		continue ## continue to the next line
+
+	if msg_type == -1:
+		m = MESSAGE(msg_type)
+		m.set_iter(int(tokens[1]))
+		message_queue.append(m)
+		
 		continue
 
-	if (r[0] == "IGNORE"):
-		ignore_set.add(r[1])
+	if msg_type == -2:
+		m = MESSAGE(msg_type)
+		m.set_ignore(int(tokens[1]))
+		message_queue.append(m)
+
+		ignore_set.add(int(tokens[1]))
 		continue
 
-	if len(r[3]) > 0:
-		fraction = 1.0/len(r[3])
-		for outnode in r[3]:
-			contribution = r[1] * fraction * alpha
-			inc = r[1] * fraction * alpha
-
-
-			"""
-			If something is in the ignore_set, then there is no need to
-			recompute its page rank. To do this, we do not any outnodes that
-			are in the ignore list.
-
-
-			Finally, at the VERY END, we simulate a contribution from every
-			member of the ignore list, to itself. To make sure that its
-			rating is preserved.
-			"""
-			if outnode not in ignore_set:
-				page_rank_map_output.append(str(outnode) + '\t' + str(contribution) + \
-						'\t' + str(r[0]) + '\t' + str(691.0) + '\n')
-			"""
-			string is the the form:
-				<node j to add the contribution to>,
-				<the contribution amount>
-				<node k the contribution came from>
-				<reserved for passing along the previous rank>
-			"""
-	else:
-		if outnode not in ignore_set:
-			page_rank_map_output.append(str(r[0]) + '\t' + str(r[1]*alpha) +
-					'\t' + str(-11) + '\t' + \
-					str(691.0) + '\n')
-	
-	"""
-	We need to account for the matrix G.
-	In here, EVERY NODE contributes to EVERY NODE (even itself).
-	"""
-	#for v in range(n_nodes):
-		#G_contribution = list_of_line_structs[v][1] * 1.0/n_nodes * (1-alpha)
-
-		#page_rank_map_output.append(str(r[0]) + '\t' + \
-				#str(G_contribution) + '\t' + \
-				#'-1' + '\t' + \
-				#str(r[2]) + '\n')
-	#G_contribution = (1-alpha)*total_sum * n_nodes
-	page_rank_map_output.append(str(r[0]) + '\t' + \
-			str(1-alpha) + '\t' + \
-			str(-1) + '\t' + \
-			str(r[1]) + '\n')
-	#page_rank_map_output.append(str(r[0]) + '\t' + \
-			#str((1-alpha)*total_sum/total_nodes) + '\t' + \
-			#'-1' + '\t' + \
-			#str(r[1]) + '\n')
-
-for s in page_rank_map_output:
-	sys.stdout.write(s)
+for msg in message_queue:
+	sys.stdout.write(str(msg))
