@@ -33,7 +33,7 @@ for line in sys.stdin:
 
 		outnodes = []
 		for u in range(2, len(tokens)):
-			m.add_tag_list(int(u))
+			m.add_tag_list(int(tokens[u]))
 			outnodes.append(int(u))
 
 		m.set_tag("{")

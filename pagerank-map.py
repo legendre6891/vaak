@@ -253,6 +253,7 @@ def main():
 	
 	for line in sys.stdin:
 		tokens = tok(line)
+
 		msg_type = getType(tokens[0], regex)
 		if msg_type >= 0:
 			numberlist = tokens[1].split(',')

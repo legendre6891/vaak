@@ -1,40 +1,6 @@
 #!/usr/bin/env python
 import sys
 
-def stoppingCriterion(minimum_digress, maximum, count_iteration):
-	"""@todo: Docstring for stoppingCriterion
-
-	:minimum_digress: @todo
-	:maximum: @todo
-	:returns: @todo
-
-	"""
-	if count_iteration >= 200:
-		return True
-	if (minimum_digress / maximum < .01):
-		return True
-	else:
-		return False
-
-def fabs(f):
-	if f < 0:
-		return -f
-	else:
-		return f
-
-def calculate_digression(list_of_structs):
-	"""@todo: Docstring for calculate_digression
-
-	:list_of_structs: @todo
-	:returns: @todo
-
-	"""
-	min_d = 0 
-	for struct in list_of_structs:
-		if fabs(struct.current_rank - struct.previous_rank) > min_d:
-			min_d = fabs(struct.current_rank - struct.previous_rank)
-	return min_d
-
 def findTenBiggest(list_of_structs):
 	"""@todo: Docstring for findTenBiggest
 
@@ -143,6 +109,7 @@ def main():
 	message_queue = []
 	node_dict = {}
 	hasIter = False
+	count_interation = -1
 
 	for line in sys.stdin:
 		tokens = my_lib.tok(line)
@@ -150,6 +117,8 @@ def main():
 		if int(tokens[0]) < 0:
 			if int(tokens[0]) == -1:
 				hasIter = True
+				interation = int(tokens[1])
+
 
 			message_queue.append(my_lib.MakeMessage(tokens))
 		else:
