@@ -1,58 +1,204 @@
 #!/usr/bin/env python
 
 import sys
+class MESSAGE:
+	def __init__(self, msg_type):
+		"""@todo: Docstring for __init__
 
-#
-# This program simply represents the identity function.
-#
+		:type: @todo
+		:returns: @todo
 
-def str_to_list(string):
-	"""@todo: Docstring for str_to_list
+		"""
+		self.form = msg_type 
+		self.data = None
+		self.data2 = []
+		self.tag = None
+		
+
+	def set_tag(self, t):
+		"""@todo: Docstring for set_tag
+
+		:t: @todo
+		:returns: @todo
+
+		"""
+		self.tag = t
+
+	def get_type(self):
+		"""@todo: Docstring for get_type
+		:returns: @todo
+
+		"""
+		return self.form
+	def set_contrib(self, ctr):
+		"""@todo: Docstring for set_contrib
+
+		:ctr: @todo
+		:returns: @todo
+
+		"""
+		if self.form >= 0:
+			self.data = ctr
+		else:
+			print "NOT CONTRIB"
+	def set_iter(self, it):
+		"""@todo: Docstring for set_iter
+
+		:it: @todo
+		:returns: @todo
+
+		"""
+		if self.form == -1:
+			self.data = it
+		else:
+			print "NOT ITER"
+	
+	def set_ignore(self, ig):
+		"""@todo: Docstring for set_ignore
+
+		:ig: @todo
+		:returns: @todo
+
+		"""
+		if self.form == -2:
+			self.data = ig
+		else:
+			print "NOT IGNORE"
+	
+	def set_chain_parent(self, chain_pt):
+		"""@todo: Docstring for set_chain_parent
+
+		:chain_pt: @todo
+		:returns: @todo
+
+		"""
+		if self.form == -100:
+			self.data = chain_pt
+		else:
+			print "NOT CHAIN"
+	
+	def add_to_chain(self, node_id):
+		"""@todo: Docstring for add_to_chain
+
+		:node_id: @todo
+		:returns: @todo
+
+		"""
+		if self.form == -100:
+			self.data2.append(node_id)
+		else:
+			print "NOT CHAIN"
+	
+	def set_prev(self, pr):
+		"""@todo: Docstring for set_prev
+
+		:pr: @todo
+		:returns: @todo
+
+		"""
+		if self.form == -101:
+			self.data = pr
+		else:
+			print "NOT PREV"
+	
+	def set_chain_parent(self, node):
+		"""@todo: Docstring for set_chain_parent
+
+		:node: @todo
+		:returns: @todo
+
+		"""
+		if self.form == -101:
+			self.data2.append(node)
+		else:
+			print "NOT PREV (parent)"
+	
+	def __str__(self):
+		"""@todo: Docstring for __str__
+		:returns: @todo
+
+		"""
+		result = ''
+		result += str(self.form)
+		result += '\t'
+
+		result += str(self.data)
+
+		for thing in self.data2:
+			result += '\t'
+			result += str(thing)
+
+		result += '\n'
+
+		return result
+
+def tok(string):
+	"""@todo: Docstring for tok
 
 	:string: @todo
 	:returns: @todo
 
 	"""
-	if string == '[]':
-		return []
-	return [int(s.strip()) for s in string[1:-1].split(',')]
+	res = string.strip()
+	return res.split('\t')
 
-def process_pagerank_reduce(line):
-	"""
-	Processes a line returned by page-rank-reduce into the list:
-	[ 	node k, 
-		page_rank of node k (did not incldue the [1] matrix yet),
-		a list of nodes that POINTS **TO** k,
-		previous rank of k
-	]
+def CreatePageRankMessage(node, rank):
+	m = MESSAGE(node)
+	m.set_contrib(rank)
+	return m
 
-	:line: @todo
+def MakeMessage(tokens, hasTag = False):
+	"""@todo: Docstring for MakeMessage
+
+	:tokens: @todo
 	:returns: @todo
 
 	"""
-	line = line.strip()
-	line = line.split('\t')
+	msg_type = int(tokens[0])
+	m = MESSAGE(msg_type)
 
-	if (int(line[0]) == -10):
-		return [int(line[0]), int(line[1])]
+	if msg_type >= 0:
+		m.set_contrib(float(tokens[1]))
+		return m
+	if msg_type == -1:
+		m.set_iter(int(tokens[1]))
+		return m
+	if msg_type == -2:
+		m.set_ignore(int(tokens[1]))
+		return m
+	if msg_type == -100:
+		m.set_chain_parent(int(tokens[1]))
 
-	return [int(line[0]), float(line[1]), str_to_list(line[2]),
-			float(line[3])]
-	
+		stopLength = len(tokens)
+		if hasTag:
+			stopLength = stopLength - 1
+
+		for u in range(2, len(tokens)):
+			m.add_to_chain(int(tokens[u]))
+		return m
+
+	if msg_type == -101:
+		m.set_prev_parent(int(tokens[1]))
+		m.set_prev(float(tokens[2]))
+		return m
+
+
+message_queue = []
 
 for line in sys.stdin:
-	old_line = line
-	line = process_pagerank_reduce(line)
+	tokens = tok(line)
+	msg_type = int(tokens[0])
 
-	if (line[0] == -10):
-		sys.stdout.write(old_line)
+
+	if msg_type >= 0:
+		m = MESSAGE(msg_type)
+		m.set_contrib(float(tokens[1]))
+		m.set_tag("$")
+		message_queue.append(m)
 		continue
-		
 
-	for innode in line[2]:
-		sys.stdout.write(str(innode) + '\t' + str(line[0]) + '\n')
-
-	sys.stdout.write(str(line[0]) + '\t' + str(line[1]) + '\t' + '#' + \
-			'\n')
-	sys.stdout.write(str(line[0]) + '\t' + str(line[3]) + '\t' + '!' + \
-			'\n')
+	if msg_type <= -100:
+		target_node = int(tokens[1])
+		m = MESSAGE(target_node)
+		m.set_contrib(float(tokens[2])
+	

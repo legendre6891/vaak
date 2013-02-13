@@ -32,12 +32,25 @@ class MESSAGE:
 		self.form = msg_type 
 		self.data = None
 		self.data2 = []
+		self.tag = None
+		
+
+	def set_tag(self, t):
+		"""@todo: Docstring for set_tag
+
+		:t: @todo
+		:returns: @todo
+
+		"""
+		self.tag = t
+
 	def get_type(self):
 		"""@todo: Docstring for get_type
 		:returns: @todo
 
 		"""
 		return self.form
+
 	def set_contrib(self, ctr):
 		"""@todo: Docstring for set_contrib
 
@@ -105,11 +118,23 @@ class MESSAGE:
 
 		"""
 		if self.form == -101:
-			self.data = pr
+			self.data2.append(pr)
 		else:
 			print "NOT PREV"
 	
-	def __str__(self):
+	def set_prev_parent(self, node):
+		"""@todo: Docstring for set_chain_parent
+
+		:node: @todo
+		:returns: @todo
+
+		"""
+		if self.form == -101:
+			self.data = node
+		else:
+			print "NOT PREV (parent)"
+	
+	def __str__(self, displayTag = False):
 		"""@todo: Docstring for __str__
 		:returns: @todo
 
@@ -124,16 +149,15 @@ class MESSAGE:
 			result += '\t'
 			result += str(thing)
 
+		if displayTag:
+			result += '\t'
+			result += str(self.tag)
+
 		result += '\n'
 
 		return result
 	
 
-message_queue = []
-alpha = 0.85
-alpha_bar = 1-alpha
-ignore_set = set([])
-regex = re.compile(".*:([0-9]+).*")
 
 def tok(string):
 	"""@todo: Docstring for tok
@@ -172,65 +196,75 @@ def getType(string):
 	else:
 		return getNumber(string)
 
-for line in sys.stdin:
-	tokens = tok(line)
-	msg_type = getType(tokens[0])
-	if msg_type >= 0:
-		numberlist = tokens[1].split(',')
-		current_rank = float(numberlist[0])
-		previous_rank = float(numberlist[1])
+
+def main():
+	message_queue = []
+	alpha = 0.85
+	alpha_bar = 1-alpha
+	ignore_set = set([])
+	regex = re.compile(".*:([0-9]+).*")
+	for line in sys.stdin:
+		tokens = tok(line)
+		msg_type = getType(tokens[0])
+		if msg_type >= 0:
+			numberlist = tokens[1].split(',')
+			current_rank = float(numberlist[0])
+			previous_rank = float(numberlist[1])
 
 
-		## Add the CHAIN
-		m = MESSAGE(-100)
-		m.set_chain_parent(msg_type)
+			## Add the CHAIN
+			m = MESSAGE(-100)
+			m.set_chain_parent(msg_type)
 
-		outnode_list = []
-		for u in range(2, len(numberlist)):
-			outnode_list.append(int(numberlist[u]))
-			m.add_to_chain(int(numberlist[u]))
+			outnode_list = []
+			for u in range(2, len(numberlist)):
+				outnode_list.append(int(numberlist[u]))
+				m.add_to_chain(int(numberlist[u]))
 
-		message_queue.append(m)
-
-		m = MESSAGE(-101)
-		m.set_prev(previous_rank)
-		message_queue.append(m)
-
-
-
-		d = len(outnode_list)
-		if d > 0:
-			fraction = 1.0/float(d)
-			for outnode in outnode_list:
-				m = MESSAGE(outnode) # a contribution for outnode
-				m.set_contrib(fraction * alpha * current_rank)
-				message_queue.append(m)
-		else:
-			m = MESSAGE(msg_type)
-			m.set_contrib(alpha * current_rank)
 			message_queue.append(m)
 
-		## add the contribution of G
-		m = MESSAGE(msg_type)
-		m.set_contrib(1-alpha)
-		message_queue.append(m)
+			m = MESSAGE(-101)
+			m.set_prev(previous_rank)
+			message_queue.append(m)
 
-		continue ## continue to the next line
 
-	if msg_type == -1:
-		m = MESSAGE(msg_type)
-		m.set_iter(int(tokens[1]))
-		message_queue.append(m)
-		
-		continue
 
-	if msg_type == -2:
-		m = MESSAGE(msg_type)
-		m.set_ignore(int(tokens[1]))
-		message_queue.append(m)
+			d = len(outnode_list)
+			if d > 0:
+				fraction = 1.0/float(d)
+				for outnode in outnode_list:
+					m = MESSAGE(outnode) # a contribution for outnode
+					m.set_contrib(fraction * alpha * current_rank)
+					message_queue.append(m)
+			else:
+				m = MESSAGE(msg_type)
+				m.set_contrib(alpha * current_rank)
+				message_queue.append(m)
 
-		ignore_set.add(int(tokens[1]))
-		continue
+			## add the contribution of G
+			m = MESSAGE(msg_type)
+			m.set_contrib(1-alpha)
+			message_queue.append(m)
 
-for msg in message_queue:
-	sys.stdout.write(str(msg))
+			continue ## continue to the next line
+
+		if msg_type == -1:
+			m = MESSAGE(msg_type)
+			m.set_iter(int(tokens[1]))
+			message_queue.append(m)
+			
+			continue
+
+		if msg_type == -2:
+			m = MESSAGE(msg_type)
+			m.set_ignore(int(tokens[1]))
+			message_queue.append(m)
+
+			ignore_set.add(int(tokens[1]))
+			continue
+
+	for msg in message_queue:
+		sys.stdout.write(str(msg))
+
+if __name__ == '__main__':
+	main()

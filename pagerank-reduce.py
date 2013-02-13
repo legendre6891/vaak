@@ -12,6 +12,18 @@ class MESSAGE:
 		self.form = msg_type 
 		self.data = None
 		self.data2 = []
+		self.tag = None
+		
+
+	def set_tag(self, t):
+		"""@todo: Docstring for set_tag
+
+		:t: @todo
+		:returns: @todo
+
+		"""
+		self.tag = t
+
 	def get_type(self):
 		"""@todo: Docstring for get_type
 		:returns: @todo
@@ -85,10 +97,22 @@ class MESSAGE:
 
 		"""
 		if self.form == -101:
-			self.data = pr
+			self.data2.append(pr)
 		else:
 			print "NOT PREV"
 	
+	def set_chain_parent(self, node):
+		"""@todo: Docstring for set_chain_parent
+
+		:node: @todo
+		:returns: @todo
+
+		"""
+		if self.form == -101:
+			self.data = node
+		else:
+			print "NOT PREV (parent)"
+
 	def __str__(self):
 		"""@todo: Docstring for __str__
 		:returns: @todo
@@ -108,27 +132,6 @@ class MESSAGE:
 
 		return result
 
-def processMap(line):
-	"""
-	process a line printed by processMap into a list as follows:
-
-	[node j, contribution/node k to j, node k, previous rank of
-		node j]
-
-	:line: line given by pagerank-map
-	:returns: list
-
-	"""
-	line = line.strip()
-	line = line.split('\t')
-
-	if (int(line[0]) == -10):
-		return [int(line[0]), int(line[1])]
-
-	return [int(line[0]), float(line[1]), int(line[2]), float(line[3])]
-
-
-
 def tok(string):
 	"""@todo: Docstring for tok
 
@@ -144,7 +147,7 @@ def CreatePageRankMessage(node, rank):
 	m.set_contrib(rank)
 	return m
 
-def MakeMessage(tokens):
+def MakeMessage(tokens, hasTag = False):
 	"""@todo: Docstring for MakeMessage
 
 	:tokens: @todo
@@ -168,8 +171,10 @@ def MakeMessage(tokens):
 		for u in range(2, len(tokens)):
 			m.add_to_chain(int(tokens[u]))
 		return m
+
 	if msg_type == -101:
-		m.set_prev(float(tokens[1]))
+		m.set_prev_parent(int(tokens[1]))
+		m.set_prev(float(tokens[2]))
 		return m
 
 
