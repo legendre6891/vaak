@@ -9,6 +9,8 @@ Currently, messages come in these types:
 	CONTRIB;	key = natural number, value = float;
 	ITER; 		key = -1; value = int;
 	KEEP; 		key = -2; value = int
+	TEN: 		key = -3; value = [list of 10 ints]
+	SAME: 		key = -4; value = int
 	IGNORE; 	key = -3; value = int
 	CHAIN; 		key = -100; value = [int] [int .... int]
 	PREV; 		key = -101; value = [int] float
@@ -69,6 +71,30 @@ class MESSAGE:
 		"""
 		return self.form
 
+	def add_to_ten(self, node):
+		"""@todo: Docstring for add_to_ten
+
+		:node: @todo
+		:returns: @todo
+
+		"""
+		if self.form == -3:
+			self.data2.append(node)
+		else:
+			print "NOT TEN"
+
+	def set_same(self, s):
+		"""@todo: Docstring for set_same
+
+		:s: @todo
+		:returns: @todo
+
+		"""
+		if self.form == -4:
+			self.data = s
+		else:
+			print "NOT SAME"
+			
 	def set_contrib(self, ctr):
 		"""@todo: Docstring for set_contrib
 
@@ -214,6 +240,10 @@ def getType(string, regex):
 		return -1
 	if string == 'KEEP':
 		return -2
+	if string == 'TEN':
+		return -3
+	if string == 'SAME':
+		return -4
 	else:
 		return getNumber(string, regex)
 
@@ -241,6 +271,17 @@ def MakeMessage(tokens, hasTag = False):
 	if msg_type == -2:
 		m.set_keep(int(tokens[1]))
 		return m
+	if msg_type == -3:
+		for u in range(2, len(tokens)):
+			m.add_to_ten(int(tokens[u]))
+		return m
+	if msg_type == -4:
+		m.set_same(int(tokens[1]))
+		return m
+	if msg_type == -1:
+		m.set_same(int(tokens[1]))
+		return m
+
 	if msg_type == -100:
 		m.set_chain_parent(int(tokens[1]))
 		for u in range(2, len(tokens)):
@@ -325,6 +366,19 @@ def main():
 			message_queue.append(m)
 
 			keep_set.add(int(tokens[1]))
+			continue
+
+		if msg_type == -3:
+			m = MESSAGE(msg_type)
+			for i in range(1, len(tokens)):
+				m.add_to_ten(int(tokens[i]))
+			message_queue.append(m)
+
+		if msg_type == -4:
+			m = MESSAGE(msg_type)
+			m.set_same(int(tokens[1]))
+			message_queue.append(m)
+			
 			continue
 
 	for msg in message_queue:

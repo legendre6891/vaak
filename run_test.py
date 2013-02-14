@@ -11,13 +11,14 @@ def main():
 	"""
 
 	stat = call('./pagerank-map.py < 0 | sort -k 1,1 | ./pagerank-reduce.py | ./process-map.py | sort -k 1,1 | ./process-reduce.py > output', shell=True)
+	stat = call('touch log.txt', shell=True)
 	stat = call('rm log.txt', shell=True)
 
 	count = 1
 
 	while stat == 0 and count < int(argv[1]):
 		call('cp output input', shell=True)
-		print count
+		print >> stderr, count
 		count += 1
 		stat = call('./pagerank-map.py < input | sort -k 1,1 | ./pagerank-reduce.py | ./process-map.py | sort -k 1,1 | ./process-reduce.py > output', shell=True)
 

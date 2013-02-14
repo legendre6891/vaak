@@ -40,6 +40,7 @@ for line in sys.stdin:
 		message_queue.append(m)
 		continue
 	
+	## for other types
 	sys.stdout.write(line)
 
 

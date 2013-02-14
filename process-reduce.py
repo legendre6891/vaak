@@ -8,6 +8,15 @@ def fabs(f):
 	else:
 		return f
 
+def getMaxDigressionRatio(node_dict):
+
+	m = 0.0
+	for node,data in node_dict.iteritems():
+		if fabs(data[0] - data[1])/data[1] > m:
+			m = fabs(data[0] - data[1])/data[1]
+	
+	return m
+
 def getMaxDigression(node_dict):
 
 	m = 0.0
@@ -22,8 +31,8 @@ def getMaxRank(node_dict):
 
 	m = 0.0
 	for node,data in node_dict.iteritems():
-		if data[0] > m:
-			m = data[0]
+		if data[1] > m:
+			m = data[1]
 	
 	return m
 
@@ -41,7 +50,7 @@ def getMaxDelta(node_dict):
 	
 	return m
 
-def stoppingCriterion(node_dict, message_dict):
+def stoppingCriterion(node_dict, message_dict, top_ten):
 	"""@todo: Docstring for stoppingCriterion
 
 	:node_dict: @todo
@@ -50,15 +59,39 @@ def stoppingCriterion(node_dict, message_dict):
 
 	"""
 	count_iteration = message_dict['ITER']
+	ten_nodes = message_dict['TEN']
 
-	if (count_iteration > 200):
-		return True
-	dig = getMaxDigression(node_dict)
-	ma = getMaxRank(node_dict)
+	if len(ten_nodes) == 10:
+		print >> sys.stderr, ten_nodes
+		print >> sys.stderr, [top_ten[i][0] for i in range(10)]
+		changed = False
+		for i in range(10):
+			if ten_nodes[i] != top_ten[i][0]:
+				changed = True
+				break
+		
+		if changed == False:
+			message_dict['SAME'] += 1
+			print >> sys.stderr, "SAME!", message_dict['SAME']
+			if message_dict['SAME'] * count_iteration > 35:
+				return True
+		else:
+			message_dict['SAME'] = 0
+			print >> sys.stderr, "NOT SAME!", message_dict['SAME']
+
 	
-	if (dig/ma < .001):
+	if (count_iteration > 100000):
 		return True
 
+	#dig = getMaxDigression(node_dict)
+	#ma = getMaxRank(node_dict)
+	
+	#if (dig/ma < 0.001):
+		#return True
+
+	#rat = getMaxDigressionRatio(node_dict)
+	#if (rat < 0.001):
+		#return True
 	else:
 		return False
 
@@ -182,8 +215,15 @@ def message_entry_to_string(msg_type, data):
 			string += msg_type + '\t' + str(ignored_node) + '\n'
 		return string
 
+	if msg_type == 'TEN':
+		string = 'TEN'
+		for node in data:
+			string += '\t' + str(node)
+		string += '\n'
+		return string
 
-
+	if msg_type == 'SAME':
+		return msg_type + '\t' + str(data) + '\n'
 
 def PERFORM_OPTIMIZATIONS(node_dict, message_dict):
 	"""@todo: Docstring for PERFORM_OPTIMIZATIONS
@@ -193,18 +233,31 @@ def PERFORM_OPTIMIZATIONS(node_dict, message_dict):
 	:returns: @todo
 
 	"""
+	#return
 	count_iteration = message_dict['ITER']
-	change_threshold= 10**(-float(count_iteration)/5.00 - 1)
+	count_nodes = len(node_dict)
+	#change_threshold= 10**(-float(count_iteration)/5.00 - 1) \
+			#* (0.000206897*count_nodes + 0.17931) 
+	#change_threshold= 10**(-float(count_iteration)/5.00 - 1) \
+			#* 0.6
+	#change_threshold = 0.003 * count_iteration + 0.000
+	#change_threshold = 0.01
+	#max_allowed = 0.0SAME
+	change_threshold = 0.01 + (0.001 - 5*1.0/float(count_nodes))*count_iteration
+
+	#change_threshold = 0
+	#if change_threshold > max_allowed:
+		#change_threshold = max_allowed
+
 
 
 	for node, data in node_dict.iteritems():
 		if (node not in message_dict['KEEP']) and fabs(data[1] -\
-				data[0])/data[1] < change_threshold:
+				data[0])/(data[1]) < change_threshold:
 			f_file = open('log.txt', 'a')
 			print >> f_file, 'keeping', node, '(curr, prev) =', data[1], \
 			data[0], "at iteration", count_iteration
 			message_dict['KEEP'].add(node)
-			pass
 
 def main():
 	my_lib = __import__("pagerank-map")
@@ -216,6 +269,8 @@ def main():
 	message_dict = {}
 	message_dict['ITER'] = 0
 	message_dict['KEEP'] = set([])
+	message_dict['TEN'] = []
+	message_dict['SAME'] = 0
 
 	hasIter = False
 
@@ -231,9 +286,13 @@ def main():
 			
 			if m.form == -1:
 				message_dict['ITER'] = m.data + 1
-			else:
-				if m.form == -2:
-					message_dict['KEEP'].add(m.data)
+			elif m.form == -2:
+				message_dict['KEEP'].add(m.data)
+			elif m.form == -3:
+				message_dict['TEN'] = m.data2
+			elif m.form == -4:
+				message_dict['SAME'] = m.data
+
 
 			message_queue.append(m)
 		else:
@@ -262,27 +321,25 @@ def main():
 
 
 	PERFORM_OPTIMIZATIONS(node_dict, message_dict)
+	
+	top_ten = findTenBiggest(node_dict)
 
-
-	if stoppingCriterion(node_dict, message_dict):
-		top_ten = findTenBiggest(node_dict)
+	if stoppingCriterion(node_dict, message_dict, top_ten):
 		for i in range(10):
 			sys.stdout.write("FinalRank:" + str(top_ten[i][1]) + '\t' +
 					str(top_ten[i][0]) + '\n')
 		sys.exit(33)
 	else:
+
+		m = my_lib.MESSAGE(-3)
+		for u in range(10):
+			m.add_to_ten(top_ten[u][0])
+		
+		message_dict['TEN'] = m.data2
+		
 		for msg_type, data in message_dict.iteritems():
 			string = message_entry_to_string(msg_type, data)
 			sys.stdout.write(string)
-		#for msg in message_queue:
-			#string = fancystring(msg)
-			#sys.stdout.write(string)
-
-		#if hasIter == False:
-			#m = my_lib.MESSAGE(-1)
-			#m.set_iter(0)
-			#string = fancystring(m)
-			#sys.stdout.write(string)
 
 		for node, data in node_dict.iteritems():
 			sys.stdout.write("NodeId:" + str(node) + '\t' + str(data[0]) + ',' \
