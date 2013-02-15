@@ -1,5 +1,36 @@
 #!/usr/bin/env python
 import sys
+import re
+from time import time
+from sys import stderr
+
+
+"""
+Currently, messages come in these types:
+	CONTRIB;	key = natural number, value = float;
+	ITER; 		key = -1; value = int;
+	KEEP; 		key = -2; value = int
+	TEN: 		key = -3; value = [list of 10 ints]
+	SAME: 		key = -4; value = int
+	IGNORE; 	key = -3; value = int
+	CHAIN; 		key = -100; value = [int] [int .... int]
+	PREV; 		key = -101; value = [int] float
+
+Furthermore, all messages end in a
+	tag
+and
+	tag_list
+
+These two values can be *ANY STRING*. Use them for your convenience.
+"""
+
+
+"""
+To add a new kind, the following must be done:
+	* Add something in the MESSAGE class to set elements.
+	* Add support into getType
+	* Add a handler after getType
+"""
 
 class MESSAGE:
 	def __init__(self, msg_type):
@@ -9,12 +40,12 @@ class MESSAGE:
 		:returns: @todo
 
 		"""
-		self.form = msg_type 
+		self.form = msg_type
 		self.data = None
 		self.data2 = []
 		self.tag = None
 		self.taglist = []
-		
+
 
 	def set_tag(self, t):
 		"""@todo: Docstring for set_tag
@@ -24,7 +55,7 @@ class MESSAGE:
 
 		"""
 		self.tag = t
-	
+
 	def add_tag_list(self, thing):
 		"""@todo: Docstring for add_tag_list
 
@@ -64,7 +95,7 @@ class MESSAGE:
 			self.data = s
 		else:
 			print "NOT SAME"
-			
+
 	def set_contrib(self, ctr):
 		"""@todo: Docstring for set_contrib
 
@@ -87,7 +118,7 @@ class MESSAGE:
 			self.data = it
 		else:
 			print "NOT ITER"
-	
+
 	def set_keep(self, ig):
 		"""@todo: Docstring for set_keep
 
@@ -99,7 +130,7 @@ class MESSAGE:
 			self.data = ig
 		else:
 			print "NOT KEEP"
-	
+
 	def set_chain_parent(self, chain_pt):
 		"""@todo: Docstring for set_chain_parent
 
@@ -111,7 +142,7 @@ class MESSAGE:
 			self.data = chain_pt
 		else:
 			print "NOT CHAIN"
-	
+
 	def add_to_chain(self, node_id):
 		"""@todo: Docstring for add_to_chain
 
@@ -123,7 +154,7 @@ class MESSAGE:
 			self.data2.append(node_id)
 		else:
 			print "NOT CHAIN"
-	
+
 	def set_prev(self, pr):
 		"""@todo: Docstring for set_prev
 
@@ -135,7 +166,7 @@ class MESSAGE:
 			self.data2.append(pr)
 		else:
 			print "NOT PREV"
-	
+
 	def set_prev_parent(self, node):
 		"""@todo: Docstring for set_chain_parent
 
@@ -147,7 +178,7 @@ class MESSAGE:
 			self.data = node
 		else:
 			print "NOT PREV (parent)"
-	
+
 	def __str__(self, displayTag = False):
 		"""@todo: Docstring for __str__
 		:returns: @todo
@@ -174,7 +205,7 @@ class MESSAGE:
 		result += '\n'
 
 		return result
-	
+
 
 
 def tok(string):
@@ -187,7 +218,8 @@ def tok(string):
 	res = string.strip()
 	return res.split('\t')
 
-def getNumber(string, regex):
+
+def getNumber(string, regex, makePositive=True):
 	"""@todo: Docstring for getNumber
 
 	:string: @todo
@@ -197,7 +229,10 @@ def getNumber(string, regex):
 	r = regex.search(string)
 	regex.match(string)
 
-	return int(r.groups()[0])
+	if makePositive:
+		return abs(int(r.groups()[0]))
+	else:
+		return int(r.groups()[0])
 
 def getType(string, regex):
 	"""@todo: Docstring for getType
@@ -207,13 +242,13 @@ def getType(string, regex):
 
 	"""
 	if string == "ITER":
-		return -1
+		return [-1, 0]
 	if string == 'KEEP':
-		return -2
+		return [-2, 0]
 	if string == 'TEN':
-		return -3
+		return [-3, 0]
 	if string == 'SAME':
-		return -4
+		return [-4, 0]
 	else:
 		return getNumber(string, regex)
 
@@ -262,6 +297,8 @@ def MakeMessage(tokens, hasTag = False):
 		m.set_prev_parent(int(tokens[1]))
 		m.set_prev(float(tokens[2]))
 		return m
+# PREPEND ABOVE
+# ---------------------
 
 def fabs(f):
 	if f < 0:
@@ -269,22 +306,26 @@ def fabs(f):
 	else:
 		return f
 
-def getMaxDigressionRatio(node_dict):
+def getMaxDigressionRatio(node_dict, message_dict):
 
 	m = 0.0
 	for node,data in node_dict.iteritems():
+		if node in message_dict['KEEP']:
+			continue
 		if fabs(data[0] - data[1])/data[1] > m:
 			m = fabs(data[0] - data[1])/data[1]
-	
+
 	return m
 
-def getMaxDigression(node_dict):
+def getMaxDigression(node_dict, message_dict):
 
 	m = 0.0
 	for node,data in node_dict.iteritems():
+		if node in message_dict['KEEP']:
+			continue
 		if fabs(data[0] - data[1]) > m:
 			m = fabs(data[0] - data[1])
-	
+
 	return m
 
 
@@ -294,10 +335,10 @@ def getMaxRank(node_dict):
 	for node,data in node_dict.iteritems():
 		if data[1] > m:
 			m = data[1]
-	
+
 	return m
 
-def getMaxDelta(node_dict):
+def getMaxDelta(node_dict, message_dict):
 	"""@todo: Docstring for getMaxDelta
 
 	:node_dict: @todo
@@ -306,9 +347,11 @@ def getMaxDelta(node_dict):
 	"""
 	m = 0.0
 	for node,data in node_dict.iteritems():
-		if fabs(data[0] - data[1])/data[1] > m: 
+		if node in message_dict['KEEP']:
+			continue
+		if fabs(data[0] - data[1])/data[1] > m:
 			m = fabs(data[0] - data[1])/data[1]
-	
+
 	return m
 
 def stoppingCriterion(node_dict, message_dict, top_ten):
@@ -319,43 +362,65 @@ def stoppingCriterion(node_dict, message_dict, top_ten):
 	:returns: @todo
 
 	"""
+	ti = time()
 	count_iteration = message_dict['ITER']
 	ten_nodes = message_dict['TEN']
-
-	if len(ten_nodes) == 10:
-		#print >> sys.stderr, ten_nodes
+	if len(ten_nodes) == 10: #print >> sys.stderr, ten_nodes
 		#print >> sys.stderr, [top_ten[i][0] for i in range(10)]
 		changed = False
 		for i in range(10):
 			if ten_nodes[i] != top_ten[i][0]:
 				changed = True
 				break
-		
+
 		if changed == False:
 			message_dict['SAME'] += 1
 			#print >> sys.stderr, "SAME!", message_dict['SAME']
-			if message_dict['SAME'] * count_iteration > 40:
+			if message_dict['SAME'] * count_iteration > 150:
+				pass
 				return True
 		else:
 			message_dict['SAME'] = 0
 			#print >> sys.stderr, "NOT SAME!", message_dict['SAME']
 
-	
-	if (count_iteration > 50):
+
+	if (count_iteration > 40):
 		return True
 
-	dig = getMaxDigression(node_dict)
+	dig = getMaxDigression(node_dict, message_dict)
 	ma = getMaxRank(node_dict)
-	
+
 	if (dig/ma < 0.001):
 		return True
 
-	rat = getMaxDigressionRatio(node_dict)
-	if (rat < 0.001):
-		return True
-	else:
-		return False
+	#rat = getMaxDigressionRatio(node_dict)
+	#if (rat < 0.00001):
+		#return True
+	#else:
+		#return False
+	
+	tf = time()
+	print >> stderr, "stoppingCriterion TOOK:", float(tf-ti)
 	return False
+
+def findKBiggest(node_dict, k):
+	ti = time()
+	topk = [[0,-1] for i in range(k)]
+
+	for node,data in node_dict.iteritems():
+		for u in range(k):
+			if data[0] > topk[u][1]:
+				for v in range(k-1, u,-1):
+					topk[v] = topk[v-1]
+				topk[u] = [node, data[0]]
+				break
+	
+	tf = time()
+	print >> stderr, "findKBiggest TOOK:", float(tf-ti)
+
+	return topk
+				
+
 
 def findTenBiggest(node_dict):
 	"""@todo: Docstring for findTenBiggest
@@ -364,85 +429,7 @@ def findTenBiggest(node_dict):
 	:returns: @todo
 
 	"""
-	found_indices = [[0,0] for i in range(10)]
-	for node,data in node_dict.iteritems():
-		if (data[0] > found_indices[0][1]):
-			found_indices[9] = found_indices[8]
-			found_indices[8] = found_indices[7]
-			found_indices[7] = found_indices[6]
-			found_indices[6] = found_indices[5]
-			found_indices[5] = found_indices[4]
-			found_indices[4] = found_indices[3]
-			found_indices[3] = found_indices[2]
-			found_indices[2] = found_indices[1]
-			found_indices[1] = found_indices[0]
-			found_indices[0] = [node, data[0]]
-			continue
-		if (data[0] > found_indices[1][1]):
-			found_indices[9] = found_indices[8]
-			found_indices[8] = found_indices[7]
-			found_indices[7] = found_indices[6]
-			found_indices[6] = found_indices[5]
-			found_indices[5] = found_indices[4]
-			found_indices[4] = found_indices[3]
-			found_indices[3] = found_indices[2]
-			found_indices[2] = found_indices[1]
-			found_indices[1] = [node, data[0]]
-			continue
-		if (data[0] > found_indices[2][1]):
-			found_indices[9] = found_indices[8]
-			found_indices[8] = found_indices[7]
-			found_indices[7] = found_indices[6]
-			found_indices[6] = found_indices[5]
-			found_indices[5] = found_indices[4]
-			found_indices[4] = found_indices[3]
-			found_indices[3] = found_indices[2]
-			found_indices[2] = [node, data[0]]
-			continue
-		if (data[0] > found_indices[3][1]):
-			found_indices[9] = found_indices[8]
-			found_indices[8] = found_indices[7]
-			found_indices[7] = found_indices[6]
-			found_indices[6] = found_indices[5]
-			found_indices[5] = found_indices[4]
-			found_indices[4] = found_indices[3]
-			found_indices[3] = [node, data[0]]
-			continue
-		if (data[0] > found_indices[4][1]):
-			found_indices[9] = found_indices[8]
-			found_indices[8] = found_indices[7]
-			found_indices[7] = found_indices[6]
-			found_indices[6] = found_indices[5]
-			found_indices[5] = found_indices[4]
-			found_indices[4] = [node, data[0]]
-			continue
-		if (data[0] > found_indices[5][1]):
-			found_indices[9] = found_indices[8]
-			found_indices[8] = found_indices[7]
-			found_indices[7] = found_indices[6]
-			found_indices[6] = found_indices[5]
-			found_indices[5] = [node, data[0]]
-			continue
-		if (data[0] > found_indices[6][1]):
-			found_indices[9] = found_indices[8]
-			found_indices[8] = found_indices[7]
-			found_indices[7] = found_indices[6]
-			found_indices[6] = [node, data[0]]
-			continue
-		if (data[0] > found_indices[7][1]):
-			found_indices[9] = found_indices[8]
-			found_indices[8] = found_indices[7]
-			found_indices[7] = [node, data[0]]
-			continue
-		if (data[0] > found_indices[8][1]):
-			found_indices[9] = found_indices[8]
-			found_indices[8] = [node, data[0]]
-			continue
-		if (data[0] > found_indices[9][1]):
-			found_indices[9] = [node, data[0]]
-			continue
-	
-	return found_indices
+	return findKBiggest(node_dict, 10)
 
 
 def fancystring(message):
@@ -470,7 +457,7 @@ def message_entry_to_string(msg_type, data):
 	"""
 	if msg_type == 'ITER':
 		return msg_type + '\t' + str(data) + '\n'
-	
+
 	if msg_type == 'KEEP':
 		string = ''
 		for ignored_node in data:
@@ -487,7 +474,7 @@ def message_entry_to_string(msg_type, data):
 	if msg_type == 'SAME':
 		return msg_type + '\t' + str(data) + '\n'
 
-def PERFORM_OPTIMIZATIONS(node_dict, message_dict):
+def PERFORM_OPTIMIZATIONS(node_dict, message_dict, topk):
 	"""@todo: Docstring for PERFORM_OPTIMIZATIONS
 
 	:node_dict: @todo
@@ -495,16 +482,17 @@ def PERFORM_OPTIMIZATIONS(node_dict, message_dict):
 	:returns: @todo
 
 	"""
+	ti = time()
 	count_iteration = message_dict['ITER']
 	count_nodes = len(node_dict)
 	#change_threshold= 10**(-float(count_iteration)/5.00 - 1) \
-			#* (0.000206897*count_nodes + 0.17931) 
+			#* (0.000206897*count_nodes + 0.17931)
 	#change_threshold= 10**(-float(count_iteration)/5.00 - 1) \
 			#* 0.8
-	change_threshold = 0.02
+	change_threshold = 0.01
 	#change_threshold = 0.003 * count_iteration + 0.000
 	#change_threshold = 0.01
-	#max_allowed = 0.0SAME
+	#max_allowed = 0.0
 	#change_threshold = 0.01 + (0.001 - 5*1.0/float(count_nodes))*count_iteration
 
 	#change_threshold = 0
@@ -512,17 +500,33 @@ def PERFORM_OPTIMIZATIONS(node_dict, message_dict):
 		#change_threshold = max_allowed
 
 
+	topk_nodes = [topk[i][0] for i in range(len(topk))]
+	topnode_set = set(topk_nodes)
+
+	#if count_iteration >= 15:
+		#return
 
 	for node, data in node_dict.iteritems():
 		if (node not in message_dict['KEEP']) and fabs(data[1] -\
 				data[0])/(data[1]) < change_threshold:
-			f_file = open('log.txt', 'a')
-			print >> f_file, 'keeping', node, '(curr, prev) =', data[1], \
-			data[0], "at iteration", count_iteration
+			#f_file = open('log.txt', 'a')
+			#print >> f_file, 'keeping', node, '(curr, prev) =', data[1], \
+			#data[0], "at iteration", count_iteration
 			message_dict['KEEP'].add(node)
 
+		if (node not in message_dict['KEEP'] and \
+				(not topnode_set & set(data[2])) and \
+				count_iteration >= 5 and \
+				node not in topnode_set):
+			pass
+			#message_dict['KEEP'].add(node)
+		
+	tf = time()
+
+	print >> stderr, "PERFORM_OPTIMIZATION TOOK:", float(tf-ti)
+
+
 def main():
-	message_queue = []
 
 	node_dict = {}
 
@@ -544,7 +548,7 @@ def main():
 				count_iteration = int(tokens[1])
 
 			m = MakeMessage(tokens)
-			
+
 			if m.form == -1:
 				message_dict['ITER'] = m.data + 1
 			elif m.form == -2:
@@ -555,7 +559,6 @@ def main():
 				message_dict['SAME'] = m.data
 
 
-			message_queue.append(m)
 		else:
 			target_node = int(tokens[0])
 			if target_node in node_dict:
@@ -581,38 +584,54 @@ def main():
 					node_dict[target_node][1] = prev_rank
 
 
-	PERFORM_OPTIMIZATIONS(node_dict, message_dict)
-	
-	top_ten = findTenBiggest(node_dict)
+	topk = findKBiggest(node_dict, 15)
+	#top_ten = findTenBiggest(node_dict)
+	top_ten = [topk[i] for i in range(10)]
+
+	PERFORM_OPTIMIZATIONS(node_dict, message_dict, topk)
+
 
 	if stoppingCriterion(node_dict, message_dict, top_ten):
 		for i in range(10):
 			sys.stdout.write("FinalRank:" + str(top_ten[i][1]) + '\t' +
 					str(top_ten[i][0]) + '\n')
-		sys.exit(33)
+		#sys.exit(33)
 	else:
-
 		m = MESSAGE(-3)
 		for u in range(10):
 			m.add_to_ten(top_ten[u][0])
-		
+
 		message_dict['TEN'] = m.data2
-		
+
 		for msg_type, data in message_dict.iteritems():
 			string = message_entry_to_string(msg_type, data)
 			sys.stdout.write(string)
 
 		for node, data in node_dict.iteritems():
-			sys.stdout.write("NodeId:" + str(node) + '\t' + str(data[0]) + ',' \
-					+ str(data[1]))
-			for outnode in data[2]:
-				sys.stdout.write(',' + str(outnode))
-			sys.stdout.write('\n')
-		
+			if node in message_dict['KEEP']:
+				sys.stdout.write("NodeId:" + str(-node) + '\t' + str(data[0]) + ',' \
+						+ str(data[1]))
+				for outnode in data[2]:
+					if outnode not in message_dict['KEEP']:
+						sys.stdout.write(',' + str(outnode))
+					else:
+						sys.stdout.write(',' + str(-outnode))
+
+				sys.stdout.write('\n')
+			else:
+				sys.stdout.write("NodeId:" + str(node) + '\t' + str(data[0]) + ',' \
+						+ str(data[1]))
+				for outnode in data[2]:
+					if outnode not in message_dict['KEEP']:
+						sys.stdout.write(',' + str(outnode))
+					else:
+						sys.stdout.write(',' + str(-outnode))
+				sys.stdout.write('\n')
 
 
-		sys.exit(0)
-	
-	
+
+		#sys.exit(0)
+
+
 if __name__ == '__main__':
 	main()

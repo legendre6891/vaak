@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 import sys
 import re
 
@@ -39,12 +38,12 @@ class MESSAGE:
 		:returns: @todo
 
 		"""
-		self.form = msg_type 
+		self.form = msg_type
 		self.data = None
 		self.data2 = []
 		self.tag = None
 		self.taglist = []
-		
+
 
 	def set_tag(self, t):
 		"""@todo: Docstring for set_tag
@@ -54,7 +53,7 @@ class MESSAGE:
 
 		"""
 		self.tag = t
-	
+
 	def add_tag_list(self, thing):
 		"""@todo: Docstring for add_tag_list
 
@@ -94,7 +93,7 @@ class MESSAGE:
 			self.data = s
 		else:
 			print "NOT SAME"
-			
+
 	def set_contrib(self, ctr):
 		"""@todo: Docstring for set_contrib
 
@@ -117,7 +116,7 @@ class MESSAGE:
 			self.data = it
 		else:
 			print "NOT ITER"
-	
+
 	def set_keep(self, ig):
 		"""@todo: Docstring for set_keep
 
@@ -129,7 +128,7 @@ class MESSAGE:
 			self.data = ig
 		else:
 			print "NOT KEEP"
-	
+
 	def set_chain_parent(self, chain_pt):
 		"""@todo: Docstring for set_chain_parent
 
@@ -141,7 +140,7 @@ class MESSAGE:
 			self.data = chain_pt
 		else:
 			print "NOT CHAIN"
-	
+
 	def add_to_chain(self, node_id):
 		"""@todo: Docstring for add_to_chain
 
@@ -153,7 +152,7 @@ class MESSAGE:
 			self.data2.append(node_id)
 		else:
 			print "NOT CHAIN"
-	
+
 	def set_prev(self, pr):
 		"""@todo: Docstring for set_prev
 
@@ -165,7 +164,7 @@ class MESSAGE:
 			self.data2.append(pr)
 		else:
 			print "NOT PREV"
-	
+
 	def set_prev_parent(self, node):
 		"""@todo: Docstring for set_chain_parent
 
@@ -177,7 +176,7 @@ class MESSAGE:
 			self.data = node
 		else:
 			print "NOT PREV (parent)"
-	
+
 	def __str__(self, displayTag = False):
 		"""@todo: Docstring for __str__
 		:returns: @todo
@@ -204,7 +203,7 @@ class MESSAGE:
 		result += '\n'
 
 		return result
-	
+
 
 
 def tok(string):
@@ -217,7 +216,8 @@ def tok(string):
 	res = string.strip()
 	return res.split('\t')
 
-def getNumber(string, regex):
+
+def getNumber(string, regex, makePositive=True):
 	"""@todo: Docstring for getNumber
 
 	:string: @todo
@@ -227,7 +227,10 @@ def getNumber(string, regex):
 	r = regex.search(string)
 	regex.match(string)
 
-	return int(r.groups()[0])
+	if makePositive:
+		return abs(int(r.groups()[0]))
+	else:
+		return int(r.groups()[0])
 
 def getType(string, regex):
 	"""@todo: Docstring for getType
@@ -237,15 +240,19 @@ def getType(string, regex):
 
 	"""
 	if string == "ITER":
-		return -1
+		return [-1, False]
 	if string == 'KEEP':
-		return -2
+		return [-2, False]
 	if string == 'TEN':
-		return -3
+		return [-3, False]
 	if string == 'SAME':
-		return -4
+		return [-4, False]
 	else:
-		return getNumber(string, regex)
+		n = getNumber(string, regex)
+		if ':-' in string:
+			return [n,True]
+		else:
+			return [n,False]
 
 def CreatePageRankMessage(node, rank):
 	m = MESSAGE(node)
@@ -292,22 +299,36 @@ def MakeMessage(tokens, hasTag = False):
 		m.set_prev_parent(int(tokens[1]))
 		m.set_prev(float(tokens[2]))
 		return m
-
+# PREPEND ABOVE
+# ---------------------
 def main():
-	message_queue = []
+	#message_queue = []
 	alpha = 0.85
-	keep_set = set([])
-	regex = re.compile(".*:([0-9]+).*")
-	
+	regex = re.compile(".*:(-*[0-9]+).*")
+
 	for line in sys.stdin:
 		tokens = tok(line)
 
-		msg_type = getType(tokens[0], regex)
+		r = getType(tokens[0], regex)
+		msg_type = r[0]
+		negative = r[1]
+
 		if msg_type >= 0:
+
 			numberlist = tokens[1].split(',')
 			current_rank = float(numberlist[0])
 			previous_rank = float(numberlist[1])
 
+
+			## if negative, add contribution from self
+			if negative:
+				assert msg_type >= 0
+				m = MESSAGE(msg_type)
+
+				m.set_contrib(current_rank)
+
+				sys.stdout.write(str(m))
+				#message_queue.append(m)
 
 			## Add the CHAIN
 			m = MESSAGE(-100)
@@ -315,74 +336,81 @@ def main():
 
 			outnode_list = []
 			for u in range(2, len(numberlist)):
-				outnode_list.append(int(numberlist[u]))
-				m.add_to_chain(int(numberlist[u]))
+				outnode_list.append((int(numberlist[u])))
+				m.add_to_chain(abs(int(numberlist[u])))
+				#print >> sys.stderr, "just added", abs(int(numberlist[u]))
 
-			message_queue.append(m)
+			sys.stdout.write(str(m))
+			#message_queue.append(m)
 
 			m = MESSAGE(-101)
 			m.set_prev(current_rank)
 			m.set_prev_parent(msg_type)
-			message_queue.append(m)
 
-			if msg_type in keep_set:
-				m = MESSAGE(msg_type)
-				m.set_contrib(current_rank)
-				message_queue.append(m)
+			sys.stdout.write(str(m))
+			#message_queue.append(m)
 
 
+			## now handle the outnodes
 			d = len(outnode_list)
 			if d > 0:
 				fraction = 1.0/float(d)
 				for outnode in outnode_list:
-					if outnode not in keep_set:
+					if outnode >= 0:
 						m = MESSAGE(outnode) # a contribution for outnode
 						m.set_contrib(fraction * alpha * current_rank)
-						message_queue.append(m)
+			
+						sys.stdout.write(str(m))
+						#message_queue.append(m)
 			else:
-				if msg_type not in keep_set:
+				if negative == False:
 					m = MESSAGE(msg_type)
 					m.set_contrib(alpha * current_rank)
-					message_queue.append(m)
+					sys.stdout.write(str(m))
+					#message_queue.append(m)
 
 			## add the contribution of G
-			if msg_type not in keep_set:
+			if negative == False:
 				m = MESSAGE(msg_type)
 				m.set_contrib(1-alpha)
-				message_queue.append(m)
+				sys.stdout.write(str(m))
+				#message_queue.append(m)
 
 			continue ## continue to the next line
 
-		if msg_type == -1:
+		elif msg_type == -1:
 			m = MESSAGE(msg_type)
 			m.set_iter(int(tokens[1]))
-			message_queue.append(m)
-			
+			sys.stdout.write(str(m))
+			#message_queue.append(m)
+
 			continue
 
-		if msg_type == -2:
+		elif msg_type == -2:
 			m = MESSAGE(msg_type)
 			m.set_keep(int(tokens[1]))
-			message_queue.append(m)
-
-			keep_set.add(int(tokens[1]))
+			sys.stdout.write(str(m))
+			#message_queue.append(m)
 			continue
 
-		if msg_type == -3:
+		elif msg_type == -3:
 			m = MESSAGE(msg_type)
 			for i in range(1, len(tokens)):
 				m.add_to_ten(int(tokens[i]))
-			message_queue.append(m)
+			sys.stdout.write(str(m))
+			#message_queue.append(m)
 
-		if msg_type == -4:
+		elif msg_type == -4:
 			m = MESSAGE(msg_type)
 			m.set_same(int(tokens[1]))
-			message_queue.append(m)
-			
+			sys.stdout.write(str(m))
+			#message_queue.append(m)
+
 			continue
 
-	for msg in message_queue:
-		sys.stdout.write(str(msg))
+	#for msg in message_queue:
+		#pass
+		#sys.stdout.write(str(msg))
 
 if __name__ == '__main__':
 	main()

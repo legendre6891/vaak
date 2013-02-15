@@ -1,6 +1,34 @@
 #!/usr/bin/env python
-
 import sys
+import re
+
+
+"""
+Currently, messages come in these types:
+	CONTRIB;	key = natural number, value = float;
+	ITER; 		key = -1; value = int;
+	KEEP; 		key = -2; value = int
+	TEN: 		key = -3; value = [list of 10 ints]
+	SAME: 		key = -4; value = int
+	IGNORE; 	key = -3; value = int
+	CHAIN; 		key = -100; value = [int] [int .... int]
+	PREV; 		key = -101; value = [int] float
+
+Furthermore, all messages end in a
+	tag
+and
+	tag_list
+
+These two values can be *ANY STRING*. Use them for your convenience.
+"""
+
+
+"""
+To add a new kind, the following must be done:
+	* Add something in the MESSAGE class to set elements.
+	* Add support into getType
+	* Add a handler after getType
+"""
 
 class MESSAGE:
 	def __init__(self, msg_type):
@@ -10,12 +38,12 @@ class MESSAGE:
 		:returns: @todo
 
 		"""
-		self.form = msg_type 
+		self.form = msg_type
 		self.data = None
 		self.data2 = []
 		self.tag = None
 		self.taglist = []
-		
+
 
 	def set_tag(self, t):
 		"""@todo: Docstring for set_tag
@@ -25,7 +53,7 @@ class MESSAGE:
 
 		"""
 		self.tag = t
-	
+
 	def add_tag_list(self, thing):
 		"""@todo: Docstring for add_tag_list
 
@@ -65,7 +93,7 @@ class MESSAGE:
 			self.data = s
 		else:
 			print "NOT SAME"
-			
+
 	def set_contrib(self, ctr):
 		"""@todo: Docstring for set_contrib
 
@@ -88,7 +116,7 @@ class MESSAGE:
 			self.data = it
 		else:
 			print "NOT ITER"
-	
+
 	def set_keep(self, ig):
 		"""@todo: Docstring for set_keep
 
@@ -100,7 +128,7 @@ class MESSAGE:
 			self.data = ig
 		else:
 			print "NOT KEEP"
-	
+
 	def set_chain_parent(self, chain_pt):
 		"""@todo: Docstring for set_chain_parent
 
@@ -112,7 +140,7 @@ class MESSAGE:
 			self.data = chain_pt
 		else:
 			print "NOT CHAIN"
-	
+
 	def add_to_chain(self, node_id):
 		"""@todo: Docstring for add_to_chain
 
@@ -124,7 +152,7 @@ class MESSAGE:
 			self.data2.append(node_id)
 		else:
 			print "NOT CHAIN"
-	
+
 	def set_prev(self, pr):
 		"""@todo: Docstring for set_prev
 
@@ -136,7 +164,7 @@ class MESSAGE:
 			self.data2.append(pr)
 		else:
 			print "NOT PREV"
-	
+
 	def set_prev_parent(self, node):
 		"""@todo: Docstring for set_chain_parent
 
@@ -148,7 +176,7 @@ class MESSAGE:
 			self.data = node
 		else:
 			print "NOT PREV (parent)"
-	
+
 	def __str__(self, displayTag = False):
 		"""@todo: Docstring for __str__
 		:returns: @todo
@@ -175,7 +203,7 @@ class MESSAGE:
 		result += '\n'
 
 		return result
-	
+
 
 
 def tok(string):
@@ -188,7 +216,8 @@ def tok(string):
 	res = string.strip()
 	return res.split('\t')
 
-def getNumber(string, regex):
+
+def getNumber(string, regex, makePositive=True):
 	"""@todo: Docstring for getNumber
 
 	:string: @todo
@@ -198,7 +227,10 @@ def getNumber(string, regex):
 	r = regex.search(string)
 	regex.match(string)
 
-	return int(r.groups()[0])
+	if makePositive:
+		return abs(int(r.groups()[0]))
+	else:
+		return int(r.groups()[0])
 
 def getType(string, regex):
 	"""@todo: Docstring for getType
@@ -208,13 +240,13 @@ def getType(string, regex):
 
 	"""
 	if string == "ITER":
-		return -1
+		return [-1, 0]
 	if string == 'KEEP':
-		return -2
+		return [-2, 0]
 	if string == 'TEN':
-		return -3
+		return [-3, 0]
 	if string == 'SAME':
-		return -4
+		return [-4, 0]
 	else:
 		return getNumber(string, regex)
 
@@ -263,29 +295,34 @@ def MakeMessage(tokens, hasTag = False):
 		m.set_prev_parent(int(tokens[1]))
 		m.set_prev(float(tokens[2]))
 		return m
+# PREPEND ABOVE
+# ---------------------
+
 def main():
 
-	message_queue = []
+	#message_queue = []
 	pagerank_dict = {}
 
 	for line in sys.stdin:
 		tokens = tok(line)
 		if int(tokens[0]) < 0:
-			message_queue.append(MakeMessage(tokens))
+			#message_queue.append(MakeMessage(tokens))
+			sys.stdout.write(line)
 		else:
 			target_node = int(tokens[0])
 			if target_node in pagerank_dict:
-				pagerank_dict[target_node] += float(tokens[1]) 
+				pagerank_dict[target_node] += float(tokens[1])
 			else:
 				pagerank_dict[target_node] = 0.0
-				pagerank_dict[target_node] += float(tokens[1]) 
+				pagerank_dict[target_node] += float(tokens[1])
 
 	for node, rank in pagerank_dict.iteritems():
 		m = CreatePageRankMessage(node, rank)
-		message_queue.append(m)
+		sys.stdout.write(str(m))
+		#message_queue.append(m)
 
-	for msg in message_queue:
-		sys.stdout.write(str(msg))
+	#for msg in message_queue:
+		#sys.stdout.write(str(msg))
 
 if __name__ == '__main__':
 	main()
